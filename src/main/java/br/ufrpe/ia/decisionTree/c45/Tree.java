@@ -9,105 +9,131 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Tree {
 
 	private No root;
 	private StoppingCriteria stoppingCriteria;
+
 	private String[][] dataMatrix;
 	private int classIndex;
-	private List<Attribute> attributes;
 	private double classEntropy;
 
+	private List<Attribute> attributes;
+
 	public static void main(String[] args) {
-		new Tree("dataset/acute_mixed.dst",7);
+		new Tree("dataset/acute_mixed.dst", 7);
 	}
-	
+
 	public Tree(String pathFile, int classIndex) {
-		this.classIndex= classIndex;
+		this.classIndex = classIndex;
+
 		getDataMatrix(pathFile);
-		
-		this.attributes= new ArrayList<Attribute>();
+		calcClassEntropy();
+
+		this.attributes = new ArrayList<Attribute>();
 	}
-	
+
 	private void getDataMatrix(String pathFile) {
 		try {
-			/* **************************************************
-			 *  Read file
-			 * **************************************************/
+			/*
+			 * ************************************************** Read file
+			 **************************************************/
 			BufferedReader buffRead = new BufferedReader(new FileReader(pathFile));
 			String firstLine = "";
-			int countLine= 0;
+			int countLine = 0;
 			String columns[] = null;
-			boolean isFirstLine= true;
+			boolean isFirstLine = true;
 			while (true) {
 				firstLine = buffRead.readLine();
 				if (firstLine != null) {
-					if ( isFirstLine ) {
-						columns= firstLine.split(",");
-						isFirstLine= false;
+					if (isFirstLine) {
+						columns = firstLine.split(",");
+						isFirstLine = false;
 					}
 					countLine++;
-					//System.out.println(firstLine);
+					// System.out.println(firstLine);
 				} else
 					break;
 			}
 			buffRead.close();
-			
-			int numberLines		= countLine;
-			int numberColumns	= columns.length; 
-			
-			this.dataMatrix= new String[numberLines][numberColumns];
+
+			int numberLines = countLine;
+			int numberColumns = columns.length;
+
+			this.dataMatrix = new String[numberLines][numberColumns];
+
+			System.out.println("***************************************************"); 
+			System.out.println("Data Matrix: ("+ pathFile +")");
+			System.out.println("***************************************************"); 
 			
 			buffRead = new BufferedReader(new FileReader(pathFile));
-			int idx= 0;
+			int idx = 0;
 			while (true) {
 				firstLine = buffRead.readLine();
 				if (firstLine != null) {
-					this.dataMatrix[idx++]= firstLine.split(",");
+					this.dataMatrix[idx++] = firstLine.split(",");
 				} else
 					break;
 			}
 			buffRead.close();
-			
+
+			printArray(this.dataMatrix);
+
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
-	
-	private void calcClassEntropy() {
-		List<String> list= new ArrayList<String>();
-		for (int i = 0; i < dataMatrix.length; i++) {
-			String[] data = dataMatrix[i];
-			list.add( data[this.classIndex] );
+
+	private void printArray(String[][] strings) {
+
+		for (int i = 0; i < this.dataMatrix.length; i++) {
+			System.out.print(" ");
+			for (int j = 0; j < this.dataMatrix[i].length; j++) {
+				System.out.print( this.dataMatrix[i][j]+ " " );
+			}
+			System.out.println();
+			if ( i > 10 ) {
+				System.out.println(" . . . ");
+				break;
+			}
+			
 		}
 		
-		int countClass= list.size();
+	}
+
+	private void calcClassEntropy() {
+		Map<String, Integer> mapElements = new HashMap<String, Integer>();
+		for (int i = 0; i < dataMatrix.length; i++) {
+			String[] data = dataMatrix[i];
+			if (mapElements.containsKey(data[this.classIndex])) {
+				Integer count = mapElements.get(data[this.classIndex]);
+				mapElements.put(data[this.classIndex], ++count);
+			} else {
+				mapElements.put(data[this.classIndex], 1);
+			}
+		}
+		
+		for (String key : mapElements.keySet()) {
+			
+		}
+
 	}
 
 	private void loadAttributes() {
 		for (int i = 0; i < dataMatrix.length; i++) {
 			String[] line = dataMatrix[i];
-			
-			
+
 		}
 	}
-	
-	
-	
 
-	
-    public static double log(double base, double valor) {
-        return Math.log(valor) / Math.log(base);
-    }
-    
 	public static double log2(double x) {
 		return (Math.log(x) / Math.log(2));
-	}	    
+	}
 
 }
