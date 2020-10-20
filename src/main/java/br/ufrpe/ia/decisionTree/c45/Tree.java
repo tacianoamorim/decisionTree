@@ -91,7 +91,6 @@ public class Tree {
 	}
 
 	private void printArray(String[][] strings) {
-
 		for (int i = 0; i < this.dataMatrix.length; i++) {
 			System.out.print(" ");
 			for (int j = 0; j < this.dataMatrix[i].length; j++) {
@@ -102,9 +101,7 @@ public class Tree {
 				System.out.println(" . . . ");
 				break;
 			}
-			
 		}
-		
 	}
 
 	private void calcClassEntropy() {
@@ -122,7 +119,6 @@ public class Tree {
 		for (String key : mapElements.keySet()) {
 			
 		}
-
 	}
 
 	private void loadAttributes() {
