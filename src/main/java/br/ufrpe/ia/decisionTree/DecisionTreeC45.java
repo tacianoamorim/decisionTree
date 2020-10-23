@@ -22,7 +22,6 @@ public class DecisionTreeC45 {
 
 	@SuppressWarnings("unused")
 	public static void main(String[] args) {
-	
 		@SuppressWarnings("resource")
 		Scanner scanner = new Scanner(System.in);
 		int opcion;
@@ -41,12 +40,12 @@ public class DecisionTreeC45 {
 			opcion = scanner.nextInt();
 			switch (opcion) {
 				case 1: 
-					tree = new Tree("dataset/acute_mixed.dst", 7);
+					tree = new Tree("dataset/acute_mixed.dst", 7, 0, 0, 0.25);
 					System.out.println("(1): Run Acute Mixed (Training)");
 					break;
 				
 				case 2:
-					tree = new Tree("dataset/abalone_mixed.txt", 0);
+					tree = new Tree("dataset/abalone_mixed.txt", 0, 0, 0, 0.25);
 					System.out.println("(2): Run Abalone Mixed (Test)");
 					break;
 				

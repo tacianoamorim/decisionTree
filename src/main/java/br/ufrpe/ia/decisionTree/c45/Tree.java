@@ -12,36 +12,64 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 public class Tree {
 
 	private No root;
-	private StoppingCriteria stoppingCriteria;
-
+	
 	private String[][] dataMatrix;
 	private int classIndex;
-	private double classEntropy;
+	private int maxDepthint;
+	private int minSamplesLeaf;
+	private float testSize;
+	private float classEntropy;
 
 	private List<Attribute> attributes;
 
 	public static void main(String[] args) {
-		new Tree("dataset/acute_mixed.dst", 7);
+		new Tree("dataset/acute_mixed.dst", 7, 0, 0, 0.5);
 	}
 
-	public Tree(String pathFile, int classIndex) {
-		this.classIndex = classIndex;
+	/**
+	 * 
+	 * @param pathFile 		- File path 
+	 * @param classIndex 	- Class index
+	 * @param minSamplesLeaf- Minimum number of examples on the node. It will be enabled if != 0.
+	 * @param maxDepthint 	- Stimulates maximum depth for tree growth. It will be enabled if != 0.
+	 * @param testSize 		- Uses the unformed percentage of the data set to build the validation set.
+	 */
+	public Tree(String pathFile, int classIndex, int minSamplesLeaf, int maxDepthint, double testSize) {
+		this.classIndex 	= classIndex;
+		this.minSamplesLeaf	= minSamplesLeaf;
+		this.maxDepthint	= maxDepthint;
+		this.testSize		= (float) testSize;
+		
+		System.out.println("=> Config tree: pathFile="+ pathFile+", classIndex="+classIndex+
+							", minSamplesLeaf="+minSamplesLeaf+", maxDepthint="+ maxDepthint+", testSize="+ testSize);
 
-		getDataMatrix(pathFile);
-		calcClassEntropy();
+		prepareDataMatrix(pathFile);
+		
+		// TODO: Tratar os numeros continuos
+		calcDadosContinuos();
+		
+		// TODO: Calcular o ganho da colecao
+		calcCollectionEntropy();
+		
+		// TODO: Calcular o ganho de todos os atributos
+		calcAttributeEntropy();
+		
+		// TODO: Definir a raiz
 
 		this.attributes = new ArrayList<Attribute>();
 	}
 
-	private void getDataMatrix(String pathFile) {
+	private void prepareDataMatrix(String pathFile) {
 		try {
 			/*
-			 * ************************************************** Read file
-			 **************************************************/
+			 * ************************************************** 
+			 * Read file
+			 * *************************************************/
 			BufferedReader buffRead = new BufferedReader(new FileReader(pathFile));
 			String firstLine = "";
 			int countLine = 0;
@@ -61,28 +89,28 @@ public class Tree {
 			}
 			buffRead.close();
 
-			int numberLines = countLine;
+			System.out.println("Total de linhas do arquivo: " +countLine);
 			int numberColumns = columns.length;
 
-			this.dataMatrix = new String[numberLines][numberColumns];
-
-			System.out.println("***************************************************"); 
-			System.out.println("Data Matrix: ("+ pathFile +")");
-			System.out.println("***************************************************"); 
+			// Carregar a matrix
+			String[][] dataMatrixTemp= new String[countLine][numberColumns];
+			loadDataMatrix(pathFile, dataMatrixTemp);
+			printArray(dataMatrixTemp);
 			
-			buffRead = new BufferedReader(new FileReader(pathFile));
-			int idx = 0;
-			while (true) {
-				firstLine = buffRead.readLine();
-				if (firstLine != null) {
-					this.dataMatrix[idx++] = firstLine.split(",");
-				} else
-					break;
-			}
-			buffRead.close();
-
+			// Embaralha todos os registros
+			shuffle(dataMatrixTemp);
+			
+			// Pega um subcoleção de dados
+			countLine= Math.round( countLine * this.testSize );
+			System.out.println("Total de linhas utilizadas: " +countLine);
+			this.dataMatrix= new String[countLine][numberColumns];
+			transferDataMatrix(dataMatrixTemp, countLine);
 			printArray(this.dataMatrix);
-
+			
+			// Ordenar atributos contunuos
+			orderAttibuteContinuos(this.dataMatrix);
+			printArray(this.dataMatrix);			
+						
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -90,11 +118,50 @@ public class Tree {
 		}
 	}
 
-	private void printArray(String[][] strings) {
-		for (int i = 0; i < this.dataMatrix.length; i++) {
+	private void loadDataMatrix(String pathFile, String[][] matrix) throws IOException {
+		BufferedReader buffRead = new BufferedReader(new FileReader(pathFile));
+		String firstLine = "";
+		int idx = 0;
+		while (true) {
+			firstLine = buffRead.readLine();
+			if (firstLine != null) {
+				matrix[idx++] = firstLine.split(",");
+			} else
+				break;
+		}
+		buffRead.close();
+	}
+	
+	private void shuffle(String[][] matrix) {
+		Random random = new Random();
+		for (int i=0; i < (matrix.length - 1); i++) {
+			int j = random.nextInt(matrix.length);
+			String[] temp = matrix[i];
+			matrix[i] = matrix[j];
+			matrix[j] = temp;
+		}	
+	}
+	
+	private void orderAttibuteContinuos(String[][] matrix) {
+		List<Integer> continuousAttributeColumns= new ArrayList<Integer>();
+		for (int i = 0; i < matrix.length; i++) {
+			if ( isNumero( matrix[0][i] ) ) {
+				continuousAttributeColumns.add( i );
+			}
+		}
+	}	
+	
+	private void transferDataMatrix(String[][] matrixTemp, int countLine) {
+		for (int i=0; i < countLine; i++) {
+			this.dataMatrix[i]= matrixTemp[i];
+		}	
+	}
+	
+	private void printArray(String[][] matrix) {
+		for (int i = 0; i <matrix.length; i++) {
 			System.out.print(" ");
-			for (int j = 0; j < this.dataMatrix[i].length; j++) {
-				System.out.print( this.dataMatrix[i][j]+ " " );
+			for (int j = 0; j < matrix[i].length; j++) {
+				System.out.print( matrix[i][j]+ " " );
 			}
 			System.out.println();
 			if ( i > 10 ) {
@@ -103,8 +170,8 @@ public class Tree {
 			}
 		}
 	}
-
-	private void calcClassEntropy() {
+	
+	private void calcCollectionEntropy() {
 		Map<String, Integer> mapElements = new HashMap<String, Integer>();
 		for (int i = 0; i < dataMatrix.length; i++) {
 			String[] data = dataMatrix[i];
@@ -116,20 +183,50 @@ public class Tree {
 			}
 		}
 		
+		float entropy= 0f;
 		for (String key : mapElements.keySet()) {
 			
 		}
 	}
+	
+	private void calcAttributeEntropy() {
+	}	
+	
+	private void calcDadosContinuos() {
+	}	
 
 	private void loadAttributes() {
 		for (int i = 0; i < dataMatrix.length; i++) {
 			String[] line = dataMatrix[i];
-
 		}
 	}
 
 	public static double log2(double x) {
 		return (Math.log(x) / Math.log(2));
+	}
+
+	private boolean isNumero(String numero) {
+		boolean isNumero = true;
+		boolean isDouble = true;
+		boolean isInteger= true;
+		
+		try {
+			Integer.parseInt(numero);
+		} catch (Exception e) {
+			isInteger= false;
+		}
+		
+		try {
+			Double.parseDouble(numero);
+		} catch (Exception e) {
+			isDouble= false;
+		}
+		
+		if ( !isInteger || !isDouble ) {
+			isNumero= false;
+		}
+		
+		return isNumero;
 	}
 
 }
