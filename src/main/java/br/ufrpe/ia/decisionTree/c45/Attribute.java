@@ -6,15 +6,15 @@ public class Attribute {
 	private String name;
 	private List<String> values;
 	private double gain;
+	private boolean isClass;
+	private int idx;
 
-	public Attribute(String name, List<String> values) {
-		this.name = name;
-		this.values= values;
-		this.gain= calcGain();
+	public Attribute() {
 	}
-
-	private double calcGain() {
-		return this.values.size() + 1d;
+	
+	public Attribute(String name, boolean isClass) {
+		this.isClass= isClass;
+		this.name = name;
 	}
 
 	public String getName() {
@@ -25,9 +25,26 @@ public class Attribute {
 		return values;
 	}
 
+	public boolean isClass() {
+		return isClass;
+	}
+
 	public double getGain() {
 		return gain;
 	}
+	public void setGain(double gain) {
+		this.gain = gain;
+	}
 
+	public void setValues(List<String> values) {
+		this.values= values;
+	}
+
+	public int getIdx() {
+		return idx;
+	}
+	public void setIdx(int idx) {
+		this.idx = idx;
+	}
 
 }

@@ -8,6 +8,8 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,7 +18,7 @@ import java.util.Random;
 
 public class Tree {
 
-	private No root;
+	private Attribute root;
 	
 	private String[][] dataMatrix;
 	private int classIndex;
@@ -24,11 +26,14 @@ public class Tree {
 	private int minSamplesLeaf;
 	private float testSize;
 	private float classEntropy;
+	private boolean hasColumn;
+	private int numberColumns;
+	private double entropy;
 
 	private List<Attribute> attributes;
 
 	public static void main(String[] args) {
-		new Tree("dataset/acute_mixed.dst", 7, 0, 0, 0.5);
+		new Tree("dataset/acute_mixed.dst", 7, 0, 0, 0.5, false);
 	}
 
 	/**
@@ -39,27 +44,29 @@ public class Tree {
 	 * @param maxDepthint 	- Stimulates maximum depth for tree growth. It will be enabled if != 0.
 	 * @param testSize 		- Uses the unformed percentage of the data set to build the validation set.
 	 */
-	public Tree(String pathFile, int classIndex, int minSamplesLeaf, int maxDepthint, double testSize) {
+	public Tree(String pathFile, int classIndex, int minSamplesLeaf, int maxDepthint, double testSize, boolean hasColumn) {
 		this.classIndex 	= classIndex;
 		this.minSamplesLeaf	= minSamplesLeaf;
 		this.maxDepthint	= maxDepthint;
 		this.testSize		= (float) testSize;
+		this.hasColumn		= hasColumn;
 		
 		System.out.println("=> Config tree: pathFile="+ pathFile+", classIndex="+classIndex+
 							", minSamplesLeaf="+minSamplesLeaf+", maxDepthint="+ maxDepthint+", testSize="+ testSize);
 
 		prepareDataMatrix(pathFile);
 		
-		// TODO: Tratar os numeros continuos
+		//TODO: 
 		calcDadosContinuos();
 		
-		// TODO: Calcular o ganho da colecao
-		calcCollectionEntropy();
+		loadListAttributes();
 		
-		// TODO: Calcular o ganho de todos os atributos
+		calcClassEntropy();
+		
 		calcAttributeEntropy();
 		
 		// TODO: Definir a raiz
+		setRootAttribute();
 
 		this.attributes = new ArrayList<Attribute>();
 	}
@@ -90,7 +97,7 @@ public class Tree {
 			buffRead.close();
 
 			System.out.println("Total de linhas do arquivo: " +countLine);
-			int numberColumns = columns.length;
+			numberColumns = columns.length;
 
 			// Carregar a matrix
 			String[][] dataMatrixTemp= new String[countLine][numberColumns];
@@ -108,7 +115,7 @@ public class Tree {
 			printArray(this.dataMatrix);
 			
 			// Ordenar atributos contunuos
-			orderAttibuteContinuos(this.dataMatrix);
+			orderAttibuteContinuos();
 			printArray(this.dataMatrix);			
 						
 		} catch (FileNotFoundException e) {
@@ -142,14 +149,34 @@ public class Tree {
 		}	
 	}
 	
-	private void orderAttibuteContinuos(String[][] matrix) {
+	private void orderAttibuteContinuos() {
 		List<Integer> continuousAttributeColumns= new ArrayList<Integer>();
-		for (int i = 0; i < matrix.length; i++) {
-			if ( isNumero( matrix[0][i] ) ) {
+		for (int i = 0; i < this.numberColumns; i++) {
+			if ( isNumero( this.dataMatrix[0][i] ) ) {
 				continuousAttributeColumns.add( i );
 			}
 		}
 	}	
+	
+	private void loadListAttributes() {
+		attributes= new ArrayList<Attribute>();
+		for ( int i = 0; i < this.numberColumns; i++ ) {
+			boolean isClass= false;
+			if ( this.classIndex == i ) {
+				isClass= true;
+			}
+			
+			Attribute attribute= new Attribute( "Column_"+ i, isClass);
+			attribute.setIdx(i);
+			
+			List<String> listValues= new ArrayList<String>();
+			for ( int j = 0; j < this.dataMatrix.length; j++ ) {
+				listValues.add( this.dataMatrix[j][i] );
+			}
+			attribute.setValues(listValues);
+			attributes.add(attribute);
+		}
+	}
 	
 	private void transferDataMatrix(String[][] matrixTemp, int countLine) {
 		for (int i=0; i < countLine; i++) {
@@ -171,30 +198,103 @@ public class Tree {
 		}
 	}
 	
-	private void calcCollectionEntropy() {
-		Map<String, Integer> mapElements = new HashMap<String, Integer>();
-		for (int i = 0; i < dataMatrix.length; i++) {
-			String[] data = dataMatrix[i];
-			if (mapElements.containsKey(data[this.classIndex])) {
-				Integer count = mapElements.get(data[this.classIndex]);
-				mapElements.put(data[this.classIndex], ++count);
-			} else {
-				mapElements.put(data[this.classIndex], 1);
+	private void calcClassEntropy() {
+		System.out.println("******* Calc Class Entropy ********");
+		Attribute attribute= new Attribute();
+		for (Attribute object : attributes) {
+			if ( object.isClass() ) {
+				attribute= object;
+				break;
 			}
 		}
 		
-		float entropy= 0f;
-		for (String key : mapElements.keySet()) {
-			
+		Map<String, Integer> mapSelection= new HashMap<String, Integer>();
+		for (String value : attribute.getValues()) {
+			if ( mapSelection.get(value) == null ) {
+				mapSelection.put(value, 1);
+			} else {
+				int valueTemp= mapSelection.get(value).intValue() + 1;
+				mapSelection.replace(value, valueTemp);
+			}
 		}
+		
+		int numberElements= attribute.getValues().size();
+		BigDecimal divisor= new BigDecimal(numberElements);
+		
+		this.entropy= 0;
+		for(String key : mapSelection.keySet()) {
+			BigDecimal dividendo= new BigDecimal( mapSelection.get(key) );
+			
+			System.out.println(" -> Total elements: "+ numberElements);
+			System.out.println(" -> ("+key+")- "+mapSelection.get(key));
+
+			BigDecimal result= dividendo.divide(divisor, 7, RoundingMode.HALF_UP);
+			this.entropy= this.entropy - result.doubleValue() * log2( result.doubleValue() );
+		}
+		System.out.println(" -> Class entropy: "+ entropy);
+	
 	}
 	
 	private void calcAttributeEntropy() {
+		System.out.println();
+		System.out.println("******* Calc Attribute Entropy ********");
+		for (Attribute attribute : attributes) {
+			if ( !attribute.isClass() ) {
+				
+				System.out.println(" => Attribute: "+ attribute.getName());
+				
+				double gain= 0;
+				Map<String, Integer> mapSelection= new HashMap<String, Integer>();
+				for (String value : attribute.getValues()) {
+					if ( mapSelection.get(value) == null ) {
+						mapSelection.put(value, 1);
+					} else {
+						int valueTemp= mapSelection.get(value).intValue() + 1;
+						mapSelection.replace(value, valueTemp);
+					}
+				}
+				
+				int numberElements= attribute.getValues().size();
+				BigDecimal divisor= new BigDecimal(numberElements);
+				
+				double entropyAttribute= 0;
+				for(String key : mapSelection.keySet()) {
+					BigDecimal dividendo= new BigDecimal( mapSelection.get(key) );
+					
+					System.out.println("  Total elements: "+ numberElements + " (" + key+")- "+mapSelection.get(key));
+
+					BigDecimal result= dividendo.divide(divisor, 7, RoundingMode.HALF_UP);
+					entropyAttribute= entropyAttribute - result.doubleValue() * log2( result.doubleValue() );
+				}
+				
+				gain= this.entropy- entropyAttribute;
+				attribute.setGain(gain);
+				
+				System.out.println(" -> Attribute gain: "+ gain);		
+				
+			}
+		}
 	}	
 	
 	private void calcDadosContinuos() {
 	}	
 
+	private void setRootAttribute() {
+		System.out.println();
+		System.out.println("******* Set Root Attribute ********");		
+		for (Attribute attribute : attributes) {
+			if ( this.root == null) {
+				this.root= attribute;
+			
+			} else {
+				if ( this.root.getGain() < attribute.getGain() ) {
+					this.root= attribute;
+				}
+			}
+		}
+		System.out.println(" -> Attribute root: "+ this.root.getName() + " ("+ this.root.getGain() +")");	
+	}	
+	
 	private void loadAttributes() {
 		for (int i = 0; i < dataMatrix.length; i++) {
 			String[] line = dataMatrix[i];
@@ -202,7 +302,7 @@ public class Tree {
 	}
 
 	public static double log2(double x) {
-		return (Math.log(x) / Math.log(2));
+		return Math.log(x) / Math.log(2);
 	}
 
 	private boolean isNumero(String numero) {
