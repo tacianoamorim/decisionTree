@@ -30,28 +30,26 @@ public class DecisionTreeC45 {
 		System.out.println("<< Decision tree (C 4.5) program >>");
 		boolean loop= true;
 		do {
-			System.out.println("#####################################");
+			System.out.println("#########################################");
 			System.out.println("Enter the option:");
 			System.out.println(" (1): Run Acute Mixed (Training)");
-			System.out.println(" (2): Run Abalone Mixed (Test)");
-			System.out.println(" (3): Exit");
-			System.out.println("#####################################");
+			System.out.println(" (2): Exit");
+			System.out.println("#########################################");
 			System.out.println();
 			opcion = scanner.nextInt();
 			switch (opcion) {
 				case 1: 
-					tree = new Tree("dataset/acute_mixed.dst", 7, 0, 0, 0.25);
+					
+					System.out.println("Enter the percentage to be used (0.0):");
+					double percent = scanner.nextDouble();
+					
+					tree = new Tree("dataset/acute_mixed.dst", 7, 0, 0, percent, false);
 					System.out.println("(1): Run Acute Mixed (Training)");
 					break;
 				
-				case 2:
-					tree = new Tree("dataset/abalone_mixed.txt", 0, 0, 0, 0.25);
-					System.out.println("(2): Run Abalone Mixed (Test)");
-					break;
-				
-				case 3: 
+				case 2: 
 					loop= false;
-					System.out.println(" (3): Exit");
+					System.out.println(" (2): Exit");
 					break;
 				
 				default:

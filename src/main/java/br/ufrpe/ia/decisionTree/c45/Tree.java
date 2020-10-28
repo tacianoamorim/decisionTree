@@ -18,22 +18,22 @@ import java.util.Random;
 
 public class Tree {
 
-	private Attribute root;
-	
+	private No root;
+
 	private String[][] dataMatrix;
 	private int classIndex;
 	private int maxDepthint;
 	private int minSamplesLeaf;
 	private float testSize;
-	private float classEntropy;
 	private boolean hasColumn;
 	private int numberColumns;
-	private double entropy;
+	//private double entropy;
 
-	private List<Attribute> attributes;
+	private List<Attribute> startedAttributes;
 
 	public static void main(String[] args) {
-		new Tree("dataset/acute_mixed.dst", 7, 0, 0, 0.5, false);
+		Tree tree= new Tree("dataset/acute_mixed_resume.dst", 6, 0, 0, 0.05, false);
+		tree.run();
 	}
 
 	/**
@@ -51,26 +51,34 @@ public class Tree {
 		this.testSize		= (float) testSize;
 		this.hasColumn		= hasColumn;
 		
+		System.out.println("####################################################################################################################");
+		System.out.println("CREATE DECISION TREE ");
+		System.out.println("####################################################################################################################");
 		System.out.println("=> Config tree: pathFile="+ pathFile+", classIndex="+classIndex+
 							", minSamplesLeaf="+minSamplesLeaf+", maxDepthint="+ maxDepthint+", testSize="+ testSize);
 
+		System.out.println();
+		System.out.println("####################################################################################################################");
+		System.out.println("PREPARE DATA ");
+		System.out.println("####################################################################################################################");
 		prepareDataMatrix(pathFile);
-		
-		//TODO: 
-		calcDadosContinuos();
 		
 		loadListAttributes();
 		
-		calcClassEntropy();
+		calcDadosContinuos();
 		
-		calcAttributeEntropy();
+		double entropyClass= calcClassEntropy(this.startedAttributes);
+		calcAttributeEntropy(this.startedAttributes, entropyClass);
 		
-		// TODO: Definir a raiz
-		setRootAttribute();
-
-		this.attributes = new ArrayList<Attribute>();
+		setRootAttribute( this.startedAttributes);
 	}
+	
 
+	/**
+	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * 	PREPARE DATA
+	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+	 */
 	private void prepareDataMatrix(String pathFile) {
 		try {
 			/*
@@ -102,7 +110,7 @@ public class Tree {
 			// Carregar a matrix
 			String[][] dataMatrixTemp= new String[countLine][numberColumns];
 			loadDataMatrix(pathFile, dataMatrixTemp);
-			printArray(dataMatrixTemp);
+			printArray("Temporary Matrix", dataMatrixTemp);
 			
 			// Embaralha todos os registros
 			shuffle(dataMatrixTemp);
@@ -112,11 +120,13 @@ public class Tree {
 			System.out.println("Total de linhas utilizadas: " +countLine);
 			this.dataMatrix= new String[countLine][numberColumns];
 			transferDataMatrix(dataMatrixTemp, countLine);
-			printArray(this.dataMatrix);
+			printArray(null, this.dataMatrix);
 			
 			// Ordenar atributos contunuos
 			orderAttibuteContinuos();
-			printArray(this.dataMatrix);			
+			sortArray(this.dataMatrix, 0);
+			sortArray(this.dataMatrix, 0);
+			printArray("Ordered Matrix", this.dataMatrix);	
 						
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -124,7 +134,7 @@ public class Tree {
 			e.printStackTrace();
 		}
 	}
-
+	
 	private void loadDataMatrix(String pathFile, String[][] matrix) throws IOException {
 		BufferedReader buffRead = new BufferedReader(new FileReader(pathFile));
 		String firstLine = "";
@@ -139,16 +149,6 @@ public class Tree {
 		buffRead.close();
 	}
 	
-	private void shuffle(String[][] matrix) {
-		Random random = new Random();
-		for (int i=0; i < (matrix.length - 1); i++) {
-			int j = random.nextInt(matrix.length);
-			String[] temp = matrix[i];
-			matrix[i] = matrix[j];
-			matrix[j] = temp;
-		}	
-	}
-	
 	private void orderAttibuteContinuos() {
 		List<Integer> continuousAttributeColumns= new ArrayList<Integer>();
 		for (int i = 0; i < this.numberColumns; i++) {
@@ -159,7 +159,7 @@ public class Tree {
 	}	
 	
 	private void loadListAttributes() {
-		attributes= new ArrayList<Attribute>();
+		startedAttributes= new ArrayList<Attribute>();
 		for ( int i = 0; i < this.numberColumns; i++ ) {
 			boolean isClass= false;
 			if ( this.classIndex == i ) {
@@ -174,7 +174,7 @@ public class Tree {
 				listValues.add( this.dataMatrix[j][i] );
 			}
 			attribute.setValues(listValues);
-			attributes.add(attribute);
+			startedAttributes.add(attribute);
 		}
 	}
 	
@@ -184,21 +184,7 @@ public class Tree {
 		}	
 	}
 	
-	private void printArray(String[][] matrix) {
-		for (int i = 0; i <matrix.length; i++) {
-			System.out.print(" ");
-			for (int j = 0; j < matrix[i].length; j++) {
-				System.out.print( matrix[i][j]+ " " );
-			}
-			System.out.println();
-			if ( i > 10 ) {
-				System.out.println(" . . . ");
-				break;
-			}
-		}
-	}
-	
-	private void calcClassEntropy() {
+	private double calcClassEntropy(List<Attribute> attributes) {
 		System.out.println("******* Calc Class Entropy ********");
 		Attribute attribute= new Attribute();
 		for (Attribute object : attributes) {
@@ -221,24 +207,23 @@ public class Tree {
 		int numberElements= attribute.getValues().size();
 		BigDecimal divisor= new BigDecimal(numberElements);
 		
-		this.entropy= 0;
+		double entropy= 0;
+		System.out.println(" -> Total elements: "+ numberElements);
 		for(String key : mapSelection.keySet()) {
 			BigDecimal dividendo= new BigDecimal( mapSelection.get(key) );
-			
-			System.out.println(" -> Total elements: "+ numberElements);
 			System.out.println(" -> ("+key+")- "+mapSelection.get(key));
-
 			BigDecimal result= dividendo.divide(divisor, 7, RoundingMode.HALF_UP);
-			this.entropy= this.entropy - result.doubleValue() * log2( result.doubleValue() );
+			entropy= entropy - result.doubleValue() * log2( result.doubleValue() );
 		}
 		System.out.println(" -> Class entropy: "+ entropy);
-	
+		
+		return entropy;
 	}
 	
-	private void calcAttributeEntropy() {
+	private void calcAttributeEntropy(List<Attribute> listAttributes, double entropyClass) {
 		System.out.println();
 		System.out.println("******* Calc Attribute Entropy ********");
-		for (Attribute attribute : attributes) {
+		for (Attribute attribute : listAttributes) {
 			if ( !attribute.isClass() ) {
 				
 				System.out.println(" => Attribute: "+ attribute.getName());
@@ -267,7 +252,7 @@ public class Tree {
 					entropyAttribute= entropyAttribute - result.doubleValue() * log2( result.doubleValue() );
 				}
 				
-				gain= this.entropy- entropyAttribute;
+				gain= entropyClass- entropyAttribute;
 				attribute.setGain(gain);
 				
 				System.out.println(" -> Attribute gain: "+ gain);		
@@ -277,30 +262,196 @@ public class Tree {
 	}	
 	
 	private void calcDadosContinuos() {
-	}	
+//		String[][] arrayDataMatrix= new String[this.startedAttributes.get(0).getValues().size()][2];
+//		for (int j = 0; j < this.startedAttributes.get(0).getValues().size(); j++) {
+////			arrayDataMatrix[0]
+//		}		
+	}
 
-	private void setRootAttribute() {
+	private No setRootAttribute( List<Attribute> listAttributes) {
 		System.out.println();
 		System.out.println("******* Set Root Attribute ********");		
-		for (Attribute attribute : attributes) {
-			if ( this.root == null) {
-				this.root= attribute;
+		No noRef= null;
+		for (Attribute attribute : listAttributes) {
+			if ( noRef == null) {
+				noRef= new No();
+				noRef.setAttributeRoot( attribute );
 			
 			} else {
-				if ( this.root.getGain() < attribute.getGain() ) {
-					this.root= attribute;
+				if ( noRef.getAttributeRoot().getGain() < attribute.getGain() ) {
+					noRef.setAttributeRoot( attribute );
 				}
 			}
 		}
-		System.out.println(" -> Attribute root: "+ this.root.getName() + " ("+ this.root.getGain() +")");	
+		noRef.setDepth(0);
+		this.root= noRef;
+		this.root.setAttributes(listAttributes);
+		System.out.println(" -> Attribute root: "+ noRef.getAttributeRoot().getName() + " ("+ noRef.getAttributeRoot().getGain() +")");	
+		return noRef;
 	}	
 	
-	private void loadAttributes() {
-		for (int i = 0; i < dataMatrix.length; i++) {
-			String[] line = dataMatrix[i];
+	private void setNoAttribute( List<Attribute> listAttributes, No noRef, No noFather ) {
+		System.out.println();
+		System.out.println("******* Set Root Attribute ********");		
+		for (Attribute attribute : listAttributes) {
+			if ( noRef == null) {
+				noRef= new  No();
+				noRef.setAttributeRoot( attribute );
+			
+			} else {
+				if ( noRef.getAttributeRoot().getGain() < attribute.getGain() ) {
+					noRef.setAttributeRoot( attribute );
+				}
+			}
 		}
+
+		int depth= 0;
+		if (noFather!=null)
+			depth= noFather.getDepth()+1;
+		noRef.setDepth(depth);
+		
+		System.out.println(" -> Attribute No: "+ noRef.getAttributeRoot().getName() + " ("+ noRef.getAttributeRoot().getGain() +")");	
+	}		
+	
+	/**
+	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * 	PROCESS DECISION TREE
+	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+	 */	
+	public void run() {
+		System.out.println();
+		System.out.println("#################################################################################################################### ");
+		System.out.println("RUN ALGORITHM");
+		System.out.println("#################################################################################################################### ");
+		
+		this.root.setVisited(false);
+		
+		while (!this.root.isVisited()) {
+			processNo(this.root);
+			
+			if (this.root.isVisited()) {
+				System.out.println("PROCESS DECISION TREE FINISHED . . . ");
+			}
+		}
+		
 	}
 
+	private void processNo(No no) {
+		
+		if ( no.isVisited() || no.isLeaf() )
+			return;
+		
+		if ( no.getNos() != null ) {
+			boolean noVisited= true;
+			No noRef= null;
+			for (No ref : no.getNos() ) {
+				if (!ref.isVisited()) {
+					noVisited= false;
+					noRef= ref;
+					break;
+				}
+			}
+			
+			if (noVisited) {
+				no.setVisited( true );
+				return;
+			} 
+			
+			// PROCESS NO REF
+			System.out.print(" -> "+ noRef.getDepth());
+		
+		} else {
+			List<Attribute> attributesNo= distributeElements( no );
+			
+//			double entropyClass= calcClassEntropy(attributesNo);
+//			calcAttributeEntropy(attributesNo, entropyClass);
+			//setNoAttribute
+			
+			for (Attribute attribute : attributesNo) {
+				//no.
+			}
+		}
+		
+		System.out.println("******* Process No ********");
+	} 
+	
+	
+	private List<Attribute> distributeElements(No no) {
+		
+		List<Attribute> attributes= new ArrayList<Attribute>();
+		Map<String, Integer> mapSelectionInt= new HashMap<String, Integer>();
+		for (String value : no.getAttributeRoot().getValues() ) {
+			if ( mapSelectionInt.get(value) == null ) {
+				mapSelectionInt.put(value, 1);
+			} else {
+				int valueTemp= mapSelectionInt.get(value).intValue() + 1;
+				mapSelectionInt.replace(value, valueTemp);
+			}
+		}
+		
+		//String[][] arrayDataMatrix= new String[no.getAttributes().get(0).getValues().size()][no.getAttributes().size()];
+		for (int j = 0; j < no.getAttributes().get(0).getValues().size(); j++) {
+			System.out.println(no.getAttributes().get(j).getName());
+			for (int i = 0; i < no.getAttributes().size(); i++) {
+				System.out.println( no.getAttributes().get(i).getValues().get(j));
+			}		
+		}
+		
+		Map<String, List<Attribute>> mapSelectionNo= new HashMap<String, List<Attribute>>();
+		for(String key : mapSelectionInt.keySet()) {
+		    for (int i = 0; i < no.getAttributeRoot().getValues().size(); i++) {
+		    	String value= no.getAttributeRoot().getValues().get(i);
+				if (value.equals(key)) {
+					if ( mapSelectionNo.get(value) == null ) {
+//						Atrin
+//						mapSelectionNo.put(value, 1);
+					} else {
+						int valueTemp= mapSelectionInt.get(value).intValue() + 1;
+						mapSelectionInt.replace(value, valueTemp);
+					}					
+				} else {
+					
+				}
+		        
+		        
+		    }
+			
+			for (String value : no.getAttributeRoot().getValues()) {
+
+				
+			}
+		}		
+		
+//		for (String value : no.getAttributeRoot().getValues() ) {
+//			if ( mapSelectionNo.get(value) == null ) {
+//				mapSelectionNo.put(value, 1);
+//			} else {
+//				int valueTemp= mapSelectionNo.get(value).intValue() + 1;
+//				mapSelectionNo.replace(value, valueTemp);
+//			}
+//		}
+		
+//		for(String key : mapSelection.keySet()) {
+//			for (String value : no.getAttributeRoot().getValues()) {
+////				if ( value.e) {
+////					
+////				}
+//			}
+//		}
+//	
+//		
+//		for(String key : mapSelection.keySet()) {
+//
+//		}
+		
+		return attributes;
+	}
+
+	/**
+	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * 	SUPPORT
+	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+	 */	
 	public static double log2(double x) {
 		return Math.log(x) / Math.log(2);
 	}
@@ -328,5 +479,64 @@ public class Tree {
 		
 		return isNumero;
 	}
+	
+	private double stringToDouble(String numero) {
+		double result= 0;
+		try {
+			result= Double.parseDouble(numero);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return result;
+	}	
+	
+	private void printArray(String msg, String[][] matrix) {
+		
+		System.out.println();
+		if ( msg != null ) {
+			System.out.println(" - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  ");
+			System.out.println(msg);
+			System.out.println(" - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  ");
+		}
+		
+		for (int i = 0; i <matrix.length; i++) {
+			System.out.print(" ");
+			for (int j = 0; j < matrix[i].length; j++) {
+				System.out.print( matrix[i][j]+ " " );
+			}
+			System.out.println();
+			if ( i > 10 ) {
+				System.out.println(" . . . ");
+				break;
+			}
+		}
+		System.out.println();
+	}
+
+	private void sortArray(String[][] matrix, int idx) {
+		String[] aux;
+		for(int i = 0; i<  (matrix.length - 1); i++){
+			for(int j = 0; j<  (matrix.length - 2); j++){
+				//System.out.println("if( "+ stringToDouble(matrix[j][idx]) +" > "+ stringToDouble(matrix[j + 1][idx]) +" ) ");
+				if (isNumero(matrix[j][idx]) ) {
+					if( stringToDouble(matrix[j][idx]) > stringToDouble(matrix[j + 1][idx]) ) {
+						aux = matrix[j];
+						matrix[j] = matrix[j+1];
+						matrix[j+1] = aux;
+					}
+				}
+			}
+		}		
+	}
+	
+	private void shuffle(String[][] matrix) {
+		Random random = new Random();
+		for (int i=0; i < (matrix.length - 1); i++) {
+			int j = random.nextInt(matrix.length);
+			String[] temp = matrix[i];
+			matrix[i] = matrix[j];
+			matrix[j] = temp;
+		}	
+	}	
 
 }

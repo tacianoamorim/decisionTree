@@ -1,40 +1,24 @@
 /**
  * @author Taciano Amorim
- *
  */
 package br.ufrpe.ia.decisionTree.c45;
 
+import java.util.List;
+
 public class No {
-	private No right;
-	private No left;
-	private Attribute attribute;
+
+	private int depth;
+	private Attribute attributeRoot;
+	private List<Attribute> attributes;
+	private List<No> nos;
 	private boolean leaf;
-	// Test
+	private boolean visited;
 
-	public No(No right, No left) {
-		this.right = right;
-		this.left = left;
+	public List<No> getNos() {
+		return nos;
 	}
-
-	public No getRight() {
-		return right;
-	}
-	public void setRight(No right) {
-		this.right = right;
-	}
-
-	public No getLeft() {
-		return left;
-	}
-	public void setLeft(No left) {
-		this.left = left;
-	}
-
-	public Attribute getAttribute() {
-		return attribute;
-	}
-	public void setAttribute(Attribute attribute) {
-		this.attribute = attribute;
+	public void setNos(List<No> nos) {
+		this.nos = nos;
 	}
 
 	public boolean isLeaf() {
@@ -43,5 +27,33 @@ public class No {
 	public void setLeaf(boolean leaf) {
 		this.leaf = leaf;
 	}
-
+	
+	public int getDepth() {
+		return depth;
+	}
+	public void setDepth(int depth) {
+		this.depth = depth;
+	}
+	
+	public boolean isVisited() {
+		return visited;
+	}
+	public void setVisited(boolean visited) {
+		this.visited = visited;
+	}
+	
+	public Attribute getAttributeRoot() {
+		return attributeRoot;
+	}
+	public void setAttributeRoot(Attribute attributeRoot) {
+		this.attributeRoot = attributeRoot;
+	}
+	
+	public List<Attribute> getAttributes() {
+		return attributes;
+	}
+	public void setAttributes(List<Attribute> attributes) {
+		this.attributes = attributes;
+	}
+	
 }
