@@ -2,6 +2,7 @@
  * @author Taciano Amorim
  *
  * Search sources:
+ *  https://www.vooo.pro/insights/um-tutorial-completo-sobre-a-modelagem-baseada-em-tree-arvore-do-zero-em-r-python/
  *  https://en.wikipedia.org/wiki/C4.5_algorithm
  *  https://www.youtube.com/watch?v=waXxs2T6GPs (Indução de Árvores de Decisão - Aula Completa)
  *  https://www.youtube.com/watch?v=_ICNdRrl68k (Árvore de decisão. Exemplo completo.)
